@@ -1,226 +1,294 @@
-﻿#include <iostream>
-#include <fstream>
+#include <iostream>
 #include <ctime>
 
 using namespace std;
 
 template<typename t>
 class AVL {
-
-	//узел дерева
-	struct Node
-	{
-		t key;
-		unsigned char height;
+	struct Node {
+		t data;
 		Node* left;
 		Node* right;
-		Node(t k)
-		{
-			key = k;
-			left = right = nullptr;
-			height = 1;
+		Node(t data) {
+			this->data = data;
+			left = nullptr;
+			right = nullptr;
 		}
 	};
 
-	Node* root; //корень дерева
+	Node* root; 
 
-	//получаем высоту дерева
-	unsigned char height(Node* p)
-	{
-		return p ? p->height : 0;
+public:
+	AVL() {
+		root = nullptr;
 	}
 
-	//коэфф балансировки
-	int bfactor(Node* p)
-	{
-		return height(p->right) - height(p->left);
+	void Add(t data) {
+		Node* k = new Node(data);
+		if (!root) {
+			root = k;
+		}
+		else {
+			root = Insert(root, k);
+		}
 	}
 
-	//вычисляем высоту дерева
-	void fixheight(Node* p)
-	{
-		unsigned char hl = height(p->left);
-		unsigned char hr = height(p->right);
-		p->height = (hl > hr ? hl : hr) + 1;
+	void Delete(t key) {
+		root = Delete(root, key);
 	}
 
-	//правый поворот вокруг p
-	Node* rotateright(Node* p)
-	{
-		Node* q = p->left;
-		p->left = q->right;
-		q->right = p;
-		fixheight(p);
-		fixheight(q);
-		return q;
+	void Find(t key) {
+		if (Find(key, root)->data == key) {
+			cout << "Tree include " << key << "!" << endl;
+		}
+		else {
+			cout << "Not find element!" << endl;
+		}
 	}
 
-	//левый поворот вокруг q
-	Node* rotateleft(Node* q)
-	{
-		Node* p = q->right;
-		q->right = p->left;
-		p->left = q;
-		fixheight(q);
-		fixheight(p);
-		return p;
+	void PrintTree() {
+		if (!root) {
+			cout << "Tree is empty!" << endl;
+			return;
+		}
+		PrintTree(root);
 	}
 
-	//балансировка узла p
-	Node* balance(Node* p)
+	~AVL() {
+		clear(root);
+	}
+
+private:
+
+	Node* Insert(Node* current, Node* n) 
 	{
-		fixheight(p);
-		if (bfactor(p) == 2)
+		if (!current) 
 		{
-			if (bfactor(p->right) < 0)
-				p->right = rotateright(p->right);
-			return rotateleft(p);
+			current = n;
+			return current;
 		}
-		if (bfactor(p) == -2) {
-			if (bfactor(p->left) > 0)
-				p->left = rotateleft(p->left);
-			return rotateright(p);
+		else if (n->data < current->data) 
+		{
+			current->left = Insert(current->left, n);
 		}
-		return p; // балансировка не нужна
+		else if (n->data > current->data) 
+		{
+			current->right = Insert(current->right, n);
+		}
+		return balance(current);
 	}
 
-	// вставка элемента в дерево
-	Node* add(Node* p, t k)
+	Node* balance(Node* current)
 	{
-		if (!p)
-			return new Node(k);
-		if (k < p->key)
-			p->left = add(p->left, k);
-		else if (k > p->key)
-			p->right = add(p->right, k);
-		return balance(p);
+		int b_factor = balance_factor(current);
+		if (b_factor > 1) 
+		{
+			if (balance_factor(current->left) > 0) 
+			{
+				current = RotateLL(current);
+			}
+			else 
+			{
+				current = RotateLR(current);
+			}
+		}
+		else if (b_factor < -1) 
+		{
+			if (balance_factor(current->right) > 0) 
+			{
+				current = RotateRL(current);
+			}
+			else 
+			{
+				current = RotateRR(current);
+			}
+		}
+		return current;
 	}
 
-	//поиск узла с минимальным ключом в дереве p 
 	Node* findmin(Node* p)
 	{
-		return p->left ? findmin(p->left) : p;
+		if (p->left)
+		{
+			return findmin(p->left);
+		}
+		else
+		{
+			return p;
+		}
 	}
 
-	//удаление узла с минимальным ключом из дерева p
-	Node* removemin(Node* p)
+	Node* removemin(Node* p) 
 	{
-		if (p->left == 0)
-			return p->right;
+		if (!p->left)
+			return p->right; 
 		p->left = removemin(p->left);
 		return balance(p);
 	}
 
-	// удаление элемента из дерева
-	Node* remove(Node* p, t k)
+	Node* Delete(Node* p, t key)
+	
 	{
-		if (!p) return 0;
-		if (k < p->key)
-			p->left = remove(p->left, k);
-		else if (k > p->key)
-			p->right = remove(p->right, k);
-		else //  k == p->key 
+		if (!p)
+		{
+			return nullptr;
+		}
+		if (key < p->data)
+		{
+			p->left = Delete(p->left, key);
+		}
+		else if (key > p->data)
+		{
+			p->right = Delete(p->right, key);
+		}
+		else
 		{
 			Node* q = p->left;
 			Node* r = p->right;
 			delete p;
-			if (!r) return q;
+			if (!r)
+			{
+				return q;
+			}
 			Node* min = findmin(r);
 			min->right = removemin(r);
 			min->left = q;
 			return balance(min);
 		}
-		return balance(p); //балансируем при выходе из рекурсии
+		return balance(p);
 	}
 
-	//асимметричный вывод дерева
-	void print(Node* root, int lvl = 0)
-	{
-		if (root)
-		{
-			print(root->right, lvl + 1);
-			for (int i = 0; i < lvl; i++)
-			{
-				cout << "   ";
-			}
-			cout << root->key << endl;
-			print(root->left, lvl + 1);
-		}
-	}
-
-	//очистка дерева
 	void clear(Node*& root)
 	{
-		if (root)
+		if (root) 
 		{
 			clear(root->left);
 			clear(root->right);
-			delete[]root;
+			delete root;
 			root = nullptr;
 		}
 	}
 
-	//открытые члены
-public:
-
-	//конструктор
-	AVL()
+	Node* Find(t key, Node* current) 
 	{
-		root = nullptr;
+		if (key < current->data) 
+		{
+			if (key == current->data) 
+			{
+				return current;
+			}
+			else
+			{
+				return Find(key, current->left);
+			}
+		}
+		else 
+		{
+			if (key == current->data) 
+			{
+				return current;
+			}
+			else
+			{
+				return Find(key, current->right);
+			}
+		}
 	}
 
-	//деструктор
-	~AVL()
+	void PrintTree(Node* current, int lvl = 0) 
 	{
-		clear(root);
+		if (current) 
+		{
+			PrintTree(current->right, lvl + 1);
+			for (int i = 0; i < lvl; i++)
+			{
+				cout << "  ";
+			}
+			cout << current->data << endl;
+			PrintTree(current->left, lvl + 1);
+		}
 	}
 
-	//добавление элемента
-	void add(t elem) 
+	int max(int l, int r) 
 	{
-		root = add(root, elem);
+		return l > r ? l : r;
 	}
 
-	//удаление элемента
-	void remove(t elem) 
+	int getHeight(Node* current) 
 	{
-		root = remove(root, elem);
+		int height = 0;
+		if (current)
+		{
+			int l = getHeight(current->left);
+			int r = getHeight(current->right);
+			int m = max(l, r);
+			height = m + 1;
+		}
+		return height;
 	}
 
-	//печать дерева
-	void print()
+	int balance_factor(Node* current) 
 	{
-		print(root);
+		int l = getHeight(current->left);
+		int r = getHeight(current->right);
+		int b_factor = l - r;
+		return b_factor;
+	}
+
+	Node* RotateRR(Node* parent)
+	{
+		Node* pivot = parent->right;
+		parent->right = pivot->left;
+		pivot->left = parent;
+		return pivot;
+	}
+
+	Node* RotateLL(Node* parent)
+	{
+		Node* pivot = parent->left;
+		parent->left = pivot->right;
+		pivot->right = parent;
+		return pivot;
+	}
+
+	Node* RotateLR(Node* parent)
+	{
+		Node* pivot = parent->left;
+		parent->left = RotateRR(pivot);
+		return RotateLL(parent);
+	}
+
+	Node* RotateRL(Node* parent)
+	{
+		Node* pivot = parent->right;
+		parent->right = RotateLL(pivot);
+		return RotateRR(parent);
 	}
 };
 
-//элементы пар
-struct pr
-{
+struct pr {
 	int f, s;
-
 	pr() :f(0), s(0) {}
 
-	pr(int f, int s)
+	pr(int f, int s) 
 	{
-		this->f = f;
+		this->f = f; 
 		this->s = s;
 	}
 };
 
-//для сравнения
-bool operator>(const pr& a, const pr& b)
+bool operator>(const pr& a, const pr& b) 
 {
-	if (a.f == b.f)
+	if (a.f == b.f) 
 	{
 		return a.s > b.s;
 	}
 	return a.f > b.f;
 }
 
-bool operator<(const pr& a, const pr& b)
+bool operator<(const pr& a, const pr& b) 
 {
-	if (a.f == b.f)
+	if (a.f == b.f) 
 	{
 		return a.s < b.s;
 	}
@@ -232,16 +300,13 @@ bool operator==(const pr& a, const pr& b)
 	return a.f == b.f && a.s == b.s;
 }
 
-//для вывода в поток
 ostream& operator<<(ostream& os, pr p)
 {
-	os << p.f << "; " << p.s << endl;
+	os << p.f << " " << p.s << endl;
 	return os;
 }
 
-//тест авл дерева
-int main()
-{
+int main() {
 	srand(time(NULL));
 	int n = 7;
 	int* m = new int[n];
@@ -254,39 +319,37 @@ int main()
 
 	cout << "First tree:" << endl;
 	AVL<int> a;
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < n; i++) 
 	{
-		a.add(m[i]);
+		a.Add(m[i]);
 	}
-	a.print();
+	a.PrintTree();
 
 	cout << "Remove from first tree elements: ";
-	for (int i = 2; i < 4; i++)
+	for (int i = 2; i < 4; i++) 
 	{
 		cout << m[i] << " ";
-		a.remove(m[i]);
+		a.Delete(m[i]);
 	}
 	cout << endl;
-	a.print();
+	a.PrintTree();
 
-	cout << "\n-------------------------------------------" << endl;
+	cout << endl << "-------------------------------------------" << endl;
 	cout << "Second tree:" << endl;
 	AVL<pr> p;
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < n; i++) 
 	{
-		p.add(mm[i]);
+		p.Add(mm[i]);
 	}
-	p.print();
+	p.PrintTree();
 
 	cout << "Remove from second tree elements: " << endl;
-	for (int i = 2; i < 4; i++)
+	for (int i = 2; i < 4; i++) 
 	{
 		cout << mm[i];
-		p.remove(mm[i]);
+		p.Delete(mm[i]);
 	}
 	cout << endl << endl;
-	p.print();
-
-	
+	p.PrintTree();
 	return 0;
 }
